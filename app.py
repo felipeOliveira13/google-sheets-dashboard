@@ -16,7 +16,7 @@ st.set_page_config(
 # -----------------------------------------
 SHEET_ID = "1zAoEQQqDaBA2E9e6eLOB2xWbmDmYa5Vyxduk9AvKqzE"
 ABA = "carros"
-# ROWS_PER_PAGE AGORA É DEFINIDO PELO USUÁRIO NA SIDEBAR
+# ROWS_PER_PAGE AGORA SERÁ DEFINIDO NO CORPO PRINCIPAL PELO USUÁRIO
 # -----------------------------------------
 
 # -----------------------------------------
@@ -98,16 +98,8 @@ if df is not None and not df.empty:
             ["Ambos", "Apenas Gráfico", "Apenas Tabela"]
         )
         
-        # 2b. SELETOR DE PAGINAÇÃO (Sidebar) - NOVO!
-        rows_per_page = st.sidebar.slider(
-            "Itens por Página (Tabela):",
-            min_value=1,
-            max_value=15,
-            value=10, # Valor padrão de 10
-            step=1
-        )
-        # Seta o valor escolhido pelo usuário para a variável de controle da paginação
-        ROWS_PER_PAGE = rows_per_page
+        # 2b. O SELETOR DE PAGINAÇÃO FOI REMOVIDO DA SIDEBAR
+        # st.sidebar.slider(...)
         
         st.sidebar.markdown("---")
         
@@ -171,8 +163,15 @@ if df is not None and not df.empty:
             # 6. EXIBIÇÃO DA TABELA E PAGINAÇÃO (Exibe se a opção for "Ambos" ou "Apenas Tabela")
             if display_mode in ["Ambos", "Apenas Tabela"]:
                 
+                # Definir o valor padrão da paginação antes de calculá-la
+                # Usaremos um valor inicial de 10 se a variável ROWS_PER_PAGE não estiver definida (embora deva ser definida mais tarde)
+                # Vamos definir ROWS_PER_PAGE temporariamente para 10 para o cálculo inicial
+                ROWS_PER_PAGE = 10 
+                
+                if 'rows_per_page_value' in st.session_state:
+                    ROWS_PER_PAGE = st.session_state.rows_per_page_value
+                
                 total_rows = len(df_filtrado)
-                # Utiliza a variável ROWS_PER_PAGE que agora é dinâmica
                 total_pages = math.ceil(total_rows / ROWS_PER_PAGE) 
 
                 # Tratamento de erro de página após a alteração do filtro/itens por página
@@ -199,34 +198,45 @@ if df is not None and not df.empty:
                         hide_index=True 
                     )
 
-                    # 7. BOTÕES DE NAVEGAÇÃO
-                    # Usando colunas para centralizar o bloco de navegação
-                    # Colunas vazias nas laterais e uma coluna central para o conteúdo
-                    col_left, col_center, col_right = st.columns([1, 2, 1])
+                    # 7. BOTÕES DE NAVEGAÇÃO E CONTROLE DE ITENS POR PÁGINA (NOVA ESTRUTURA)
+                    
+                    # 7a. Linha principal com botões de navegação e o Slider centralizado
+                    col_prev, col_slider, col_next = st.columns([1, 2, 1])
 
-                    with col_center:
-                        # Colunas internas para posicionar os elementos
-                        btn_prev, page_info, btn_next = st.columns([1, 2, 1])
-                        
-                        with btn_prev:
-                            if st.button("<< Anterior", disabled=(st.session_state.current_page == 1), use_container_width=True):
-                                st.session_state.current_page -= 1
-                                st.rerun()
-                        
-                        with page_info:
-                            # Centralização do texto com CSS e margin superior para alinhamento vertical
-                            st.markdown(
-                                f"""
-                                <div style='text-align: center; font-weight: bold; margin-top: 8px;'>
-                                    Página {st.session_state.current_page} de {total_pages}
-                                </div>
-                                """, 
-                                unsafe_allow_html=True
-                            )
+                    with col_prev:
+                        if st.button("<< Anterior", disabled=(st.session_state.current_page == 1), use_container_width=True):
+                            st.session_state.current_page -= 1
+                            st.rerun()
+                    
+                    with col_slider:
+                        # Seletor de Paginação movido e armazenado no session_state para persistência
+                        rows_per_page_selection = st.slider(
+                            "Itens por Página (1-15)",
+                            min_value=1,
+                            max_value=15,
+                            value=ROWS_PER_PAGE, 
+                            step=1,
+                            key='rows_per_page_value',
+                            label_visibility="collapsed" # Remove o label para centralizar melhor
+                        )
+                        # Se o valor mudar, o Streamlit vai rerunnar e usar o novo valor
+                        ROWS_PER_PAGE = rows_per_page_selection
 
-                        with btn_next:
-                            if st.button("Próximo >>", disabled=(st.session_state.current_page >= total_pages), use_container_width=True):
-                                st.session_state.current_page += 1
-                                st.rerun()
+
+                    with col_next:
+                        if st.button("Próximo >>", disabled=(st.session_state.current_page >= total_pages), use_container_width=True):
+                            st.session_state.current_page += 1
+                            st.rerun()
+
+                    # 7b. Linha secundária para a identificação da página (Abaixo do botão Próximo)
+                    # Colunas para alinhar o texto à direita (sob o botão Próximo)
+                    col_info_left, col_info_right = st.columns([3, 1])
+                    
+                    with col_info_right:
+                        # Texto informativo abaixo e alinhado à direita
+                        st.markdown(
+                            f"<p style='text-align: right; font-weight: bold;'>Página {st.session_state.current_page} de {total_pages}</p>", 
+                            unsafe_allow_html=True
+                        )
 
 st.caption("Status: Dashboard com controle de visualização.")
