@@ -1,7 +1,7 @@
 import streamlit as st
 import gspread
 import pandas as pd
-import math # Importar para usar a função ceil
+import math
 
 # -----------------------------------------
 # Configurações da Planilha
@@ -20,7 +20,6 @@ def calcular_altura_tabela(df):
     MAX_HEIGHT = 800
     
     # A altura será baseada no ROWS_PER_PAGE para manter o layout fixo
-    # Mesmo se houver menos de 10 linhas na última página, a tabela terá o mesmo tamanho.
     altura_fixa = HEADER_HEIGHT + (ROWS_PER_PAGE * ROW_HEIGHT)
     
     return min(altura_fixa, MAX_HEIGHT)
@@ -97,22 +96,18 @@ if df is not None and not df.empty:
         total_rows = len(df_filtrado)
         total_pages = math.ceil(total_rows / ROWS_PER_PAGE)
 
-        # Garante que a página atual não exceda o total de páginas (ocorre após a filtragem)
         if st.session_state.current_page > total_pages and total_pages > 0:
             st.session_state.current_page = total_pages
         elif total_pages == 0:
              st.session_state.current_page = 1
         
-        # Calcula os índices de início e fim da fatia (slice) do DataFrame
         start_row = (st.session_state.current_page - 1) * ROWS_PER_PAGE
         end_row = start_row + ROWS_PER_PAGE
         
-        # Cria o DataFrame para exibição na página atual
         df_paginado = df_filtrado.iloc[start_row:end_row]
         
         # 5. EXIBIÇÃO DA TABELA
         
-        # Cabeçalho com o status de paginação
         st.subheader(f"Dados Filtrados: {total_rows} registros")
         
         if df_paginado.empty:
@@ -124,28 +119,25 @@ if df is not None and not df.empty:
             st.dataframe(
                 df_paginado, 
                 use_container_width=True, 
-                height=table_height 
+                height=table_height,
+                hide_index=True # <--- Esta é a nova linha para ocultar o índice!
             )
 
             # 6. BOTÕES DE NAVEGAÇÃO
             
-            # Cria colunas para centralizar a navegação
             col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
             
-            # Botão Anterior
             with col1:
                 if st.button("<< Anterior", disabled=(st.session_state.current_page == 1)):
                     st.session_state.current_page -= 1
                     st.rerun()
             
-            # Indicador de Página
             with col3:
                 st.markdown(
                     f"<p style='text-align: center; font-weight: bold;'>Página {st.session_state.current_page} de {total_pages}</p>", 
                     unsafe_allow_html=True
                 )
 
-            # Botão Próximo
             with col5:
                 if st.button("Próximo >>", disabled=(st.session_state.current_page >= total_pages)):
                     st.session_state.current_page += 1
