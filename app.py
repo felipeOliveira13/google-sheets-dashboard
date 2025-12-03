@@ -7,7 +7,7 @@ import altair as alt
 # --- CONFIGURAÇÃO DA PÁGINA (DEVE SER A PRIMEIRA CHAMADA STREAMLIT) ---
 st.set_page_config(
     page_title="Painel exibição de dados",
-    page_icon="📈", # Ícone de gráfico para a aba do navegador
+    page_icon="📈", 
     layout="wide"
 )
 
@@ -16,7 +16,8 @@ st.set_page_config(
 # -----------------------------------------
 SHEET_ID = "1zAoEQQqDaBA2E9e6eLOB2xWbmDmYa5Vyxduk9AvKqzE"
 ABA = "carros"
-ROWS_PER_PAGE = 10 # Definição do número de linhas por página
+# ROWS_PER_PAGE AGORA É DEFINIDO PELO USUÁRIO NA SIDEBAR
+# -----------------------------------------
 
 # -----------------------------------------
 # FUNÇÃO AUXILIAR PARA CALCULAR ALTURA
@@ -58,7 +59,7 @@ def conectar_planilha(sheet_id, aba):
 # -----------------------------------------
 # STREAMLIT APP PRINCIPAL
 # -----------------------------------------
-st.title("Painel exibição de dados") # Removemos o ícone daqui, pois já está no page_config
+st.title("Painel exibição de dados") 
 
 # 1. INICIALIZAÇÃO DO ESTADO DA PÁGINA
 if 'current_page' not in st.session_state:
@@ -96,6 +97,18 @@ if df is not None and not df.empty:
             "Modo de Exibição:",
             ["Ambos", "Apenas Gráfico", "Apenas Tabela"]
         )
+        
+        # 2b. SELETOR DE PAGINAÇÃO (Sidebar) - NOVO!
+        rows_per_page = st.sidebar.slider(
+            "Itens por Página (Tabela):",
+            min_value=1,
+            max_value=15,
+            value=10, # Valor padrão de 10
+            step=1
+        )
+        # Seta o valor escolhido pelo usuário para a variável de controle da paginação
+        ROWS_PER_PAGE = rows_per_page
+        
         st.sidebar.markdown("---")
         
         # 3. BOTÃO DE RECARGA MANUAL (Sidebar)
@@ -159,9 +172,10 @@ if df is not None and not df.empty:
             if display_mode in ["Ambos", "Apenas Tabela"]:
                 
                 total_rows = len(df_filtrado)
-                total_pages = math.ceil(total_rows / ROWS_PER_PAGE)
+                # Utiliza a variável ROWS_PER_PAGE que agora é dinâmica
+                total_pages = math.ceil(total_rows / ROWS_PER_PAGE) 
 
-                # Resetar a página se a filtragem for muito restritiva
+                # Tratamento de erro de página após a alteração do filtro/itens por página
                 if st.session_state.current_page > total_pages and total_pages > 0:
                     st.session_state.current_page = total_pages
                 elif total_pages == 0:
@@ -172,7 +186,7 @@ if df is not None and not df.empty:
                 
                 df_paginado = df_filtrado.iloc[start_row:end_row]
 
-                st.subheader(f"Dados da Tabela: {total_rows} registros")
+                st.subheader(f"Dados da Tabela: {total_rows} registros (Exibindo {ROWS_PER_PAGE} por página)")
                 
                 if df_paginado.empty:
                     st.info("Nenhum registro para exibir na tabela.")
