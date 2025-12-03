@@ -200,22 +200,33 @@ if df is not None and not df.empty:
                     )
 
                     # 7. BOTÕES DE NAVEGAÇÃO
-                    col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
-                    
-                    with col1:
-                        if st.button("<< Anterior", disabled=(st.session_state.current_page == 1)):
-                            st.session_state.current_page -= 1
-                            st.rerun()
-                    
-                    with col3:
-                        st.markdown(
-                            f"<p style='text-align: center; font-weight: bold;'>Página {st.session_state.current_page} de {total_pages}</p>", 
-                            unsafe_allow_html=True
-                        )
+                    # Usando colunas para centralizar o bloco de navegação
+                    # Colunas vazias nas laterais e uma coluna central para o conteúdo
+                    col_left, col_center, col_right = st.columns([1, 2, 1])
 
-                    with col5:
-                        if st.button("Próximo >>", disabled=(st.session_state.current_page >= total_pages)):
-                            st.session_state.current_page += 1
-                            st.rerun()
+                    with col_center:
+                        # Colunas internas para posicionar os elementos
+                        btn_prev, page_info, btn_next = st.columns([1, 2, 1])
+                        
+                        with btn_prev:
+                            if st.button("<< Anterior", disabled=(st.session_state.current_page == 1), use_container_width=True):
+                                st.session_state.current_page -= 1
+                                st.rerun()
+                        
+                        with page_info:
+                            # Centralização do texto com CSS e margin superior para alinhamento vertical
+                            st.markdown(
+                                f"""
+                                <div style='text-align: center; font-weight: bold; margin-top: 8px;'>
+                                    Página {st.session_state.current_page} de {total_pages}
+                                </div>
+                                """, 
+                                unsafe_allow_html=True
+                            )
+
+                        with btn_next:
+                            if st.button("Próximo >>", disabled=(st.session_state.current_page >= total_pages), use_container_width=True):
+                                st.session_state.current_page += 1
+                                st.rerun()
 
 st.caption("Status: Dashboard com controle de visualização.")
