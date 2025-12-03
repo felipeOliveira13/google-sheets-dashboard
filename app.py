@@ -3,18 +3,19 @@ import gspread
 import pandas as pd
 
 # -----------------------------------------
-# Carregar dados da Planilha
+# Configurações da Planilha
 # -----------------------------------------
-
-# Nome da aba (WORKSHEET) e ID da Planilha (SHEET_ID)
 SHEET_ID = "1zAoEQQqDaBA2E9e6eLOB2xWbmDmYa5Vyxduk9AvKqzE"
 ABA = "carros"
 
-@st.cache_data(ttl=600)  # Armazena os dados em cache por 10 minutos para performance
+# -----------------------------------------
+# Conectar e Carregar Planilha
+# -----------------------------------------
+@st.cache_data(ttl=600)  # Armazena os dados em cache por 10 minutos
 def conectar_planilha(sheet_id, aba):
+    """Função para autenticar e carregar o DataFrame da planilha."""
     try:
         # 1. Autenticação usando o dicionário de segredos "google"
-        # O gspread lê o JSON formatado diretamente do st.secrets["google"]
         gc = gspread.service_account_from_dict(st.secrets["google"])
 
         # 2. Abrir a planilha
@@ -23,7 +24,7 @@ def conectar_planilha(sheet_id, aba):
         # 3. Selecionar a aba (worksheet)
         worksheet = sheet.worksheet(aba)
 
-        # 4. Obter todos os registros (converte a primeira linha em cabeçalhos de coluna)
+        # 4. Obter todos os registros
         dados = worksheet.get_all_records()
         
         # 5. Converter para DataFrame
@@ -32,22 +33,63 @@ def conectar_planilha(sheet_id, aba):
         return df
 
     except Exception as e:
-        # Se houver um erro de credencial, exibirá a mensagem de erro.
-        # Certifique-se de que o e-mail da Conta de Serviço (tiquinho@...) 
-        # está compartilhado na planilha do Google Sheets.
         st.error(f"Erro ao conectar ou carregar dados: {e}")
+        st.info("Verifique a chave 'google' no Streamlit Secrets (secrets.toml).")
         return None
 
 
 # -----------------------------------------
-# STREAMLIT APP
+# STREAMLIT APP PRINCIPAL (COM FILTROS)
 # -----------------------------------------
 st.title("📊 Dashboard - Google Sheets (Cloud)")
 
 df = conectar_planilha(SHEET_ID, ABA)
 
-if df is not None:
-    st.subheader(f"Dados da aba '{ABA}'")
-    st.dataframe(df)
+if df is not None and not df.empty:
+    
+    # ⚠️ DEFINIÇÃO DOS NOMES DAS COLUNAS
+    # Mantenha estes nomes em MAIÚSCULAS ou como estão na sua planilha.
+    COL_MODELO = 'Modelo' 
+    COL_ANO = 'Ano'
+    
+    # --- VERIFICAÇÃO DE COLUNAS ---
+    if COL_MODELO not in df.columns or COL_ANO not in df.columns:
+        st.error(f"As colunas '{COL_MODELO}' ou '{COL_ANO}' não foram encontradas na planilha. Verifique os nomes exatos das colunas.")
+    else:
+        
+        # 1. SIDEBAR (FILTROS)
+        st.sidebar.header("⚙️ Selecione os Filtros")
+        
+        # --- FILTRO MODELO ---
+        # Extrai, ordena e adiciona a opção "Todos"
+        modelos_unicos = sorted(df[COL_MODELO].unique())
+        lista_modelos = ["Todos"] + modelos_unicos
+        selected_model = st.sidebar.selectbox("Modelo do Carro:", lista_modelos)
 
-st.caption("Verifique o arquivo '.streamlit/secrets.toml' para as credenciais.")
+        # --- FILTRO ANO ---
+        # Garante que os anos sejam tratados como strings para ordenação e comparação
+        anos_unicos = sorted([str(a) for a in df[COL_ANO].unique()], reverse=True)
+        lista_anos = ["Todos"] + anos_unicos
+        selected_year = st.sidebar.selectbox("Ano de Fabricação:", lista_anos)
+
+        # 2. APLICAR FILTROS
+        df_filtrado = df.copy()
+
+        # Filtrar por Modelo
+        if selected_model != "Todos":
+            df_filtrado = df_filtrado[df_filtrado[COL_MODELO] == selected_model]
+
+        # Filtrar por Ano
+        if selected_year != "Todos":
+            # Filtra convertendo a coluna Ano para string para corresponder à seleção
+            df_filtrado = df_filtrado[df_filtrado[COL_ANO].astype(str) == selected_year]
+        
+        # 3. EXIBIR RESULTADOS
+        st.subheader(f"Dados Filtrados ({len(df_filtrado)} registros)")
+        
+        if df_filtrado.empty:
+            st.info("Nenhum registro encontrado com os filtros selecionados.")
+        else:
+            st.dataframe(df_filtrado, use_container_width=True)
+
+st.caption("Status: Dashboard com filtros.")
