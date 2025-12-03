@@ -225,7 +225,7 @@ if df is not None and not df.empty:
                         
                         # NOVO: Texto descritivo abaixo do slider, agora CENTRALIZADO usando st.markdown com CSS
                         st.markdown(
-                            "<p style='text-align: center; font-size: 0.8em;'>ajuste para visualização de número de itens por página</p>",
+                            "<p style='text-align: center; font-size: 0.8em;'>ajuste para visualização do número de itens por página</p>",
                             unsafe_allow_html=True
                         )
 
