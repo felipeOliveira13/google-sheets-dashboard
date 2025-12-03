@@ -67,10 +67,8 @@ if df is not None and not df.empty:
     
     COL_MODELO = 'Modelo' 
     COL_ANO = 'Ano'
-    # ⚠️ Nome da coluna de Preço, ajuste se for diferente!
     COL_PRECO = 'Preço (R$)' 
     
-    # Validação de colunas necessárias
     required_cols = [COL_MODELO, COL_ANO]
     if not all(col in df.columns for col in required_cols):
         st.error(f"As colunas necessárias {required_cols} não foram encontradas na planilha.")
@@ -85,8 +83,15 @@ if df is not None and not df.empty:
         lista_anos = ["Todos"] + anos_unicos
         selected_year = st.sidebar.selectbox("Ano de Fabricação:", lista_anos)
         
-        # 3. BOTÃO DE RECARGA MANUAL (Sidebar)
+        # 2a. SELETOR DE EXIBIÇÃO (Sidebar)
         st.sidebar.markdown("---")
+        display_mode = st.sidebar.radio(
+            "Modo de Exibição:",
+            ["Ambos", "Apenas Gráfico", "Apenas Tabela"]
+        )
+        st.sidebar.markdown("---")
+        
+        # 3. BOTÃO DE RECARGA MANUAL (Sidebar)
         if st.sidebar.button("🔄 Recarregar Dados Agora"):
             st.cache_data.clear()
             st.session_state.current_page = 1 
@@ -106,88 +111,90 @@ if df is not None and not df.empty:
             st.info("Nenhum registro encontrado com os filtros selecionados.")
         else:
             
-            # 5. GRÁFICO: MÉDIA DE PREÇO POR MODELO
-            if COL_PRECO not in df.columns:
-                 st.warning(f"A coluna de preço '{COL_PRECO}' é necessária para o gráfico e não foi encontrada.")
-            else:
-                try:
-                    # Tenta converter a coluna de preço para um tipo numérico, forçando 'coerce' para NaN em erros
-                    df_filtrado[COL_PRECO] = pd.to_numeric(
-                        df_filtrado[COL_PRECO].astype(str).str.replace(',', '.', regex=False), # Tenta corrigir vírgula decimal
-                        errors='coerce'
-                    )
-                    df_precos_validos = df_filtrado.dropna(subset=[COL_PRECO])
+            # 5. GRÁFICO (Exibe se a opção for "Ambos" ou "Apenas Gráfico")
+            if display_mode in ["Ambos", "Apenas Gráfico"]:
+                if COL_PRECO not in df.columns:
+                     st.warning(f"A coluna de preço '{COL_PRECO}' é necessária para o gráfico e não foi encontrada.")
+                else:
+                    try:
+                        # Limpeza e conversão para numérico
+                        df_filtrado[COL_PRECO] = pd.to_numeric(
+                            df_filtrado[COL_PRECO].astype(str).str.replace(',', '.', regex=False),
+                            errors='coerce'
+                        )
+                        df_precos_validos = df_filtrado.dropna(subset=[COL_PRECO])
 
-                    if not df_precos_validos.empty:
-                        st.subheader("Visualização: Média de Preço por Modelo (R$)")
-                        
-                        # 5a. Calcular a Média de Preço por Modelo
-                        media_precos = df_precos_validos.groupby(COL_MODELO)[COL_PRECO].mean().reset_index()
-                        media_precos.columns = [COL_MODELO, 'Preço Médio (R$)']
-                        
-                        # 5b. Criar o Gráfico de Barras com Altair
-                        chart = alt.Chart(media_precos).mark_bar().encode(
-                            x=alt.X('Preço Médio (R$)', title='Preço Médio (R$)', axis=alt.Axis(format='$,.2f')),
-                            y=alt.Y(COL_MODELO, sort='-x', title='Modelo'),
-                            tooltip=[COL_MODELO, alt.Tooltip('Preço Médio (R$)', format='$,.2f')]
-                        ).properties(
-                            title='Média de Preços por Modelo (Dados Filtrados)'
-                        ).interactive() # Permite zoom e pan
-                        
-                        st.altair_chart(chart, use_container_width=True)
+                        if not df_precos_validos.empty:
+                            st.subheader("Visualização: Média de Preço por Modelo (R$)")
+                            
+                            # 5a. Calcular a Média de Preço por Modelo
+                            media_precos = df_precos_validos.groupby(COL_MODELO)[COL_PRECO].mean().reset_index()
+                            media_precos.columns = [COL_MODELO, 'Preço Médio (R$)']
+                            
+                            # 5b. Criar o Gráfico de Barras com Altair
+                            chart = alt.Chart(media_precos).mark_bar().encode(
+                                x=alt.X('Preço Médio (R$)', title='Preço Médio (R$)', axis=alt.Axis(format='$,.2f')),
+                                y=alt.Y(COL_MODELO, sort='-x', title='Modelo'),
+                                tooltip=[COL_MODELO, alt.Tooltip('Preço Médio (R$)', format='$,.2f')]
+                            ).properties(
+                                title='Média de Preços por Modelo (Dados Filtrados)'
+                            ).interactive()
+                            
+                            st.altair_chart(chart, use_container_width=True)
 
-                    else:
-                         st.info(f"Não há dados válidos na coluna '{COL_PRECO}' para calcular a média e gerar o gráfico.")
+                        else:
+                            st.info(f"Não há dados válidos na coluna '{COL_PRECO}' para calcular a média e gerar o gráfico.")
 
-                except Exception as e:
-                    st.error(f"Erro ao gerar o gráfico de média de preços. Verifique o formato dos dados: {e}")
+                    except Exception as e:
+                        st.error(f"Erro ao gerar o gráfico de média de preços. Verifique o formato dos dados: {e}")
             
-            # --- PAGINAÇÃO E TABELA ---
-
-            total_rows = len(df_filtrado)
-            total_pages = math.ceil(total_rows / ROWS_PER_PAGE)
-
-            if st.session_state.current_page > total_pages and total_pages > 0:
-                st.session_state.current_page = total_pages
-            elif total_pages == 0:
-                 st.session_state.current_page = 1
-            
-            start_row = (st.session_state.current_page - 1) * ROWS_PER_PAGE
-            end_row = start_row + ROWS_PER_PAGE
-            
-            df_paginado = df_filtrado.iloc[start_row:end_row]
-
-            # 6. EXIBIÇÃO DA TABELA
-            st.subheader(f"Dados da Tabela: {total_rows} registros")
-            
-            if df_paginado.empty:
-                st.info("Nenhum registro para exibir na tabela.")
-            else:
-                table_height = calcular_altura_tabela(len(df_paginado))
-                st.dataframe(
-                    df_paginado, 
-                    use_container_width=True, 
-                    height=table_height,
-                    hide_index=True 
-                )
-
-                # 7. BOTÕES DE NAVEGAÇÃO
-                col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+            # 6. EXIBIÇÃO DA TABELA E PAGINAÇÃO (Exibe se a opção for "Ambos" ou "Apenas Tabela")
+            if display_mode in ["Ambos", "Apenas Tabela"]:
                 
-                with col1:
-                    if st.button("<< Anterior", disabled=(st.session_state.current_page == 1)):
-                        st.session_state.current_page -= 1
-                        st.rerun()
+                total_rows = len(df_filtrado)
+                total_pages = math.ceil(total_rows / ROWS_PER_PAGE)
+
+                # Resetar a página se a filtragem for muito restritiva
+                if st.session_state.current_page > total_pages and total_pages > 0:
+                    st.session_state.current_page = total_pages
+                elif total_pages == 0:
+                    st.session_state.current_page = 1
                 
-                with col3:
-                    st.markdown(
-                        f"<p style='text-align: center; font-weight: bold;'>Página {st.session_state.current_page} de {total_pages}</p>", 
-                        unsafe_allow_html=True
+                start_row = (st.session_state.current_page - 1) * ROWS_PER_PAGE
+                end_row = start_row + ROWS_PER_PAGE
+                
+                df_paginado = df_filtrado.iloc[start_row:end_row]
+
+                st.subheader(f"Dados da Tabela: {total_rows} registros")
+                
+                if df_paginado.empty:
+                    st.info("Nenhum registro para exibir na tabela.")
+                else:
+                    table_height = calcular_altura_tabela(len(df_paginado))
+                    st.dataframe(
+                        df_paginado, 
+                        use_container_width=True, 
+                        height=table_height,
+                        hide_index=True 
                     )
 
-                with col5:
-                    if st.button("Próximo >>", disabled=(st.session_state.current_page >= total_pages)):
-                        st.session_state.current_page += 1
-                        st.rerun()
+                    # 7. BOTÕES DE NAVEGAÇÃO
+                    col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+                    
+                    with col1:
+                        if st.button("<< Anterior", disabled=(st.session_state.current_page == 1)):
+                            st.session_state.current_page -= 1
+                            st.rerun()
+                    
+                    with col3:
+                        st.markdown(
+                            f"<p style='text-align: center; font-weight: bold;'>Página {st.session_state.current_page} de {total_pages}</p>", 
+                            unsafe_allow_html=True
+                        )
 
-st.caption("Status: Dashboard com filtros, paginação e visualizações dinâmicas.")
+                    with col5:
+                        if st.button("Próximo >>", disabled=(st.session_state.current_page >= total_pages)):
+                            st.session_state.current_page += 1
+                            st.rerun()
+
+st.caption("Status: Dashboard com controle de visualização.")
