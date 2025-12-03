@@ -2,7 +2,7 @@ import streamlit as st
 import gspread
 import pandas as pd
 import math
-import altair as alt # Importar Altair para criar gráficos mais avançados
+import altair as alt
 
 # -----------------------------------------
 # Configurações da Planilha
@@ -34,8 +34,6 @@ def conectar_planilha(sheet_id, aba):
         gc = gspread.service_account_from_dict(st.secrets["google"])
         sheet = gc.open_by_key(sheet_id)
         worksheet = sheet.worksheet(aba)
-        # Tenta obter todos os registros. NOTA: Se houver linhas vazias completas no final,
-        # 'get_all_records()' tende a ignorá-las, o que ajuda na limpeza.
         dados = worksheet.get_all_records()
         df = pd.DataFrame(dados)
 
@@ -108,47 +106,41 @@ if df is not None and not df.empty:
             st.info("Nenhum registro encontrado com os filtros selecionados.")
         else:
             
-            # 5. GRÁFICO DE BARRAS: Contagem por Modelo
-            st.subheader("Visualização: Contagem de Veículos por Modelo")
-            
-            # Agrupa e conta os modelos
-            contagem_modelo = df_filtrado[COL_MODELO].value_counts().reset_index()
-            contagem_modelo.columns = [COL_MODELO, 'Contagem']
-            
-            # Cria o gráfico usando Altair para melhor visualização
-            chart = alt.Chart(contagem_modelo).mark_bar().encode(
-                x=alt.X('Contagem', title='Número de Carros'),
-                y=alt.Y(COL_MODELO, sort='-x', title='Modelo'),
-                tooltip=[COL_MODELO, 'Contagem']
-            ).properties(
-                title='Distribuição de Modelos (Dados Filtrados)'
-            ).interactive() # Permite zoom e pan
-            
-            st.altair_chart(chart, use_container_width=True)
-            
-            # 6. HISTOGRAMA DE PREÇOS (Se a coluna de preço existir)
-            if COL_PRECO in df.columns:
+            # 5. GRÁFICO: MÉDIA DE PREÇO POR MODELO
+            if COL_PRECO not in df.columns:
+                 st.warning(f"A coluna de preço '{COL_PRECO}' é necessária para o gráfico e não foi encontrada.")
+            else:
                 try:
-                    # Tenta converter a coluna de preço para um tipo numérico
-                    # NOTA: O Google Sheets retorna tudo como string, então isso é crucial.
-                    df_filtrado[COL_PRECO] = pd.to_numeric(df_filtrado[COL_PRECO], errors='coerce')
-                    df_precos = df_filtrado.dropna(subset=[COL_PRECO])
+                    # Tenta converter a coluna de preço para um tipo numérico, forçando 'coerce' para NaN em erros
+                    df_filtrado[COL_PRECO] = pd.to_numeric(
+                        df_filtrado[COL_PRECO].astype(str).str.replace(',', '.', regex=False), # Tenta corrigir vírgula decimal
+                        errors='coerce'
+                    )
+                    df_precos_validos = df_filtrado.dropna(subset=[COL_PRECO])
 
-                    if not df_precos.empty:
-                        st.subheader("Visualização: Distribuição de Preços")
-                        # Cria o histograma
-                        hist_chart = alt.Chart(df_precos).mark_bar().encode(
-                            alt.X(COL_PRECO, bin=True, title='Preço (R$)'),
-                            alt.Y('count()', title='Frequência'),
-                            tooltip=[COL_PRECO, 'count()']
+                    if not df_precos_validos.empty:
+                        st.subheader("Visualização: Média de Preço por Modelo (R$)")
+                        
+                        # 5a. Calcular a Média de Preço por Modelo
+                        media_precos = df_precos_validos.groupby(COL_MODELO)[COL_PRECO].mean().reset_index()
+                        media_precos.columns = [COL_MODELO, 'Preço Médio (R$)']
+                        
+                        # 5b. Criar o Gráfico de Barras com Altair
+                        chart = alt.Chart(media_precos).mark_bar().encode(
+                            x=alt.X('Preço Médio (R$)', title='Preço Médio (R$)', axis=alt.Axis(format='$,.2f')),
+                            y=alt.Y(COL_MODELO, sort='-x', title='Modelo'),
+                            tooltip=[COL_MODELO, alt.Tooltip('Preço Médio (R$)', format='$,.2f')]
                         ).properties(
-                            title='Histograma de Preços'
-                        ).interactive()
+                            title='Média de Preços por Modelo (Dados Filtrados)'
+                        ).interactive() # Permite zoom e pan
+                        
+                        st.altair_chart(chart, use_container_width=True)
 
-                        st.altair_chart(hist_chart, use_container_width=True)
+                    else:
+                         st.info(f"Não há dados válidos na coluna '{COL_PRECO}' para calcular a média e gerar o gráfico.")
 
                 except Exception as e:
-                    st.warning(f"Não foi possível gerar o histograma de preços. Verifique se a coluna '{COL_PRECO}' contém apenas números (sem caracteres como 'R$' ou pontos, exceto vírgula decimal, que deve ser ajustada). Erro: {e}")
+                    st.error(f"Erro ao gerar o gráfico de média de preços. Verifique o formato dos dados: {e}")
             
             # --- PAGINAÇÃO E TABELA ---
 
@@ -165,7 +157,7 @@ if df is not None and not df.empty:
             
             df_paginado = df_filtrado.iloc[start_row:end_row]
 
-            # 7. EXIBIÇÃO DA TABELA
+            # 6. EXIBIÇÃO DA TABELA
             st.subheader(f"Dados da Tabela: {total_rows} registros")
             
             if df_paginado.empty:
@@ -179,7 +171,7 @@ if df is not None and not df.empty:
                     hide_index=True 
                 )
 
-                # 8. BOTÕES DE NAVEGAÇÃO
+                # 7. BOTÕES DE NAVEGAÇÃO
                 col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
                 
                 with col1:
@@ -189,7 +181,7 @@ if df is not None and not df.empty:
                 
                 with col3:
                     st.markdown(
-                        f"<p style='text-align: center; font-weight: bold;'>Página {st.session_page.current_page} de {total_pages}</p>", 
+                        f"<p style='text-align: center; font-weight: bold;'>Página {st.session_state.current_page} de {total_pages}</p>", 
                         unsafe_allow_html=True
                     )
 
