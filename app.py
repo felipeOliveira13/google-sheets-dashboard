@@ -51,7 +51,7 @@ def conectar_planilha(sheet_id, aba):
 # -----------------------------------------
 # STREAMLIT APP PRINCIPAL
 # -----------------------------------------
-st.title("📊 Dashboard - Google Sheets (Carros)")
+st.title("📈 Painel exibição de dados") # TÍTULO E ÍCONE ATUALIZADOS!
 
 # 1. INICIALIZAÇÃO DO ESTADO DA PÁGINA
 if 'current_page' not in st.session_state:
