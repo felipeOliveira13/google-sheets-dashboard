@@ -201,7 +201,8 @@ if df is not None and not df.empty:
                     # 7. BOTÕES DE NAVEGAÇÃO E CONTROLE DE ITENS POR PÁGINA (NOVA ESTRUTURA)
                     
                     # 7a. Linha principal com botões de navegação e o Slider centralizado
-                    col_prev, col_slider, col_next = st.columns([1, 2, 1])
+                    # Alterando a distribuição de colunas de [1, 2, 1] para [1, 1.5, 1] para reduzir o tamanho do slider
+                    col_prev, col_slider, col_next = st.columns([1, 1.5, 1])
 
                     with col_prev:
                         if st.button("<< Anterior", disabled=(st.session_state.current_page == 1), use_container_width=True):
