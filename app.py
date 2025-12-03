@@ -223,8 +223,11 @@ if df is not None and not df.empty:
                         # Se o valor mudar, o Streamlit vai rerunnar e usar o novo valor
                         ROWS_PER_PAGE = rows_per_page_selection
                         
-                        # NOVO: Texto descritivo abaixo do slider
-                        st.caption("ajuste para visualização de número de itens por página")
+                        # NOVO: Texto descritivo abaixo do slider, agora CENTRALIZADO usando st.markdown com CSS
+                        st.markdown(
+                            "<p style='text-align: center; font-size: 0.8em;'>ajuste para visualização de número de itens por página</p>",
+                            unsafe_allow_html=True
+                        )
 
 
                     with col_next:
