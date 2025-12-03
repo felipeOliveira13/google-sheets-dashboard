@@ -4,6 +4,13 @@ import pandas as pd
 import math
 import altair as alt
 
+# --- CONFIGURAÇÃO DA PÁGINA (DEVE SER A PRIMEIRA CHAMADA STREAMLIT) ---
+st.set_page_config(
+    page_title="Painel exibição de dados",
+    page_icon="📈", # Ícone de gráfico para a aba do navegador
+    layout="wide"
+)
+
 # -----------------------------------------
 # Configurações da Planilha
 # -----------------------------------------
@@ -51,7 +58,7 @@ def conectar_planilha(sheet_id, aba):
 # -----------------------------------------
 # STREAMLIT APP PRINCIPAL
 # -----------------------------------------
-st.title("📈 Painel exibição de dados") # TÍTULO E ÍCONE ATUALIZADOS!
+st.title("Painel exibição de dados") # Removemos o ícone daqui, pois já está no page_config
 
 # 1. INICIALIZAÇÃO DO ESTADO DA PÁGINA
 if 'current_page' not in st.session_state:
