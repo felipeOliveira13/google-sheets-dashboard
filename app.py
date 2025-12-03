@@ -9,6 +9,24 @@ SHEET_ID = "1zAoEQQqDaBA2E9e6eLOB2xWbmDmYa5Vyxduk9AvKqzE"
 ABA = "carros"
 
 # -----------------------------------------
+# FUNÇÃO AUXILIAR PARA CALCULAR ALTURA
+# -----------------------------------------
+def calcular_altura_tabela(df):
+    """Calcula a altura ideal em pixels para exibir todas as linhas sem rolagem."""
+    # Altura aproximada do cabeçalho
+    HEADER_HEIGHT = 35
+    # Altura aproximada de cada linha de dados
+    ROW_HEIGHT = 35
+    
+    # Altura total = Altura do cabeçalho + (Número de linhas * Altura da linha)
+    altura_total = HEADER_HEIGHT + (len(df) * ROW_HEIGHT)
+    
+    # Limita a altura máxima para evitar que a tabela ocupe a tela inteira com muitos dados
+    MAX_HEIGHT = 800  # Limite máximo de 800 pixels
+    
+    return min(altura_total, MAX_HEIGHT)
+
+# -----------------------------------------
 # Conectar e Carregar Planilha
 # -----------------------------------------
 # O TTL (Time to Live) de 60 segundos define a frequência de recarga automática.
@@ -42,7 +60,7 @@ def conectar_planilha(sheet_id, aba):
 # -----------------------------------------
 # STREAMLIT APP PRINCIPAL
 # -----------------------------------------
-st.title("📊 Dashboard - Google Sheets (Cloud)")
+st.title("📊 Dashboard - Google Sheets (Carros)")
 
 # --- Início da Barra Lateral (Sidebar) ---
 st.sidebar.header("⚙️ Opções e Filtros")
@@ -98,6 +116,12 @@ if df is not None and not df.empty:
         if df_filtrado.empty:
             st.info("Nenhum registro encontrado com os filtros selecionados.")
         else:
-            st.dataframe(df_filtrado, use_container_width=True)
+            # --- CÁLCULO DA ALTURA E EXIBIÇÃO SEM SCROLL ---
+            table_height = calcular_altura_tabela(df_filtrado)
+            st.dataframe(
+                df_filtrado, 
+                use_container_width=True, 
+                height=table_height # Define a altura dinâmica
+            )
 
-st.caption("Nota: A recarga automática ocorre a cada 60 segundos. O botão de recarga manual força a busca por novos dados.")
+st.caption("Nota: A tabela é redimensionada para mostrar todas as linhas (máximo de 800px de altura).")
