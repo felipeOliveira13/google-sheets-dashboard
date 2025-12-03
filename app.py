@@ -11,7 +11,7 @@ ABA = "carros"
 # -----------------------------------------
 # Conectar e Carregar Planilha
 # -----------------------------------------
-# TEMPO DE ATUALIZAÇÃO AUTOMÁTICA (TTL) REDUZIDO PARA 60 SEGUNDOS (1 MINUTO)
+# O TTL (Time to Live) de 60 segundos define a frequência de recarga automática.
 @st.cache_data(ttl=60) 
 def conectar_planilha(sheet_id, aba):
     """Função para autenticar e carregar o DataFrame da planilha."""
@@ -40,19 +40,14 @@ def conectar_planilha(sheet_id, aba):
 
 
 # -----------------------------------------
-# STREAMLIT APP PRINCIPAL (COM FILTROS)
+# STREAMLIT APP PRINCIPAL
 # -----------------------------------------
 st.title("📊 Dashboard - Google Sheets (Cloud)")
 
-# BOTÃO DE ATUALIZAÇÃO MANUAL (na barra lateral)
-st.sidebar.header("Opções")
-if st.sidebar.button("🔄 Recarregar Dados Agora"):
-    # Limpa o cache para forçar a função 'conectar_planilha' a rodar novamente
-    st.cache_data.clear()
-    st.rerun() # Força o Streamlit a reexecutar o script
-    st.sidebar.success("Dados recarregados!")
+# --- Início da Barra Lateral (Sidebar) ---
+st.sidebar.header("⚙️ Opções e Filtros")
 
-
+# Carregamento do DataFrame
 df = conectar_planilha(SHEET_ID, ABA)
 
 if df is not None and not df.empty:
@@ -66,8 +61,7 @@ if df is not None and not df.empty:
         st.error(f"As colunas '{COL_MODELO}' ou '{COL_ANO}' não foram encontradas na planilha. Verifique os nomes exatos das colunas.")
     else:
         
-        # 1. SIDEBAR (FILTROS)
-        st.sidebar.header("⚙️ Filtros de Visualização")
+        # 1. FILTROS (VÊM PRIMEIRO NA SIDEBAR)
         
         # --- FILTRO MODELO ---
         modelos_unicos = sorted(df[COL_MODELO].unique())
@@ -78,8 +72,16 @@ if df is not None and not df.empty:
         anos_unicos = sorted([str(a) for a in df[COL_ANO].unique()], reverse=True)
         lista_anos = ["Todos"] + anos_unicos
         selected_year = st.sidebar.selectbox("Ano de Fabricação:", lista_anos)
+        
+        # 2. BOTÃO DE RECARGA MANUAL (VEM DEPOIS NA SIDEBAR)
+        st.sidebar.markdown("---") # Linha separadora para organização
+        if st.sidebar.button("🔄 Recarregar Dados Agora"):
+            # Ação: Limpa o cache e força a reexecução do script
+            st.cache_data.clear()
+            st.rerun() 
+            st.sidebar.success("Dados recarregados!")
 
-        # 2. APLICAR FILTROS
+        # 3. APLICAR FILTROS (Lógica principal)
         df_filtrado = df.copy()
 
         # Filtrar por Modelo
@@ -90,7 +92,7 @@ if df is not None and not df.empty:
         if selected_year != "Todos":
             df_filtrado = df_filtrado[df_filtrado[COL_ANO].astype(str) == selected_year]
         
-        # 3. EXIBIR RESULTADOS
+        # 4. EXIBIR RESULTADOS (Corpo do aplicativo)
         st.subheader(f"Dados Filtrados ({len(df_filtrado)} registros)")
         
         if df_filtrado.empty:
@@ -98,4 +100,4 @@ if df is not None and not df.empty:
         else:
             st.dataframe(df_filtrado, use_container_width=True)
 
-st.caption("Nota: A recarga automática ocorre a cada 60 segundos (1 minuto) devido à limitação da API do Google. Use o botão 'Recarregar Dados Agora' para atualização imediata.")
+st.caption("Nota: A recarga automática ocorre a cada 60 segundos. O botão de recarga manual força a busca por novos dados.")
