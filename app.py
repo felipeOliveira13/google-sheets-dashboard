@@ -11,18 +11,19 @@ ABA = "carros"
 ROWS_PER_PAGE = 10 # Definição do número de linhas por página
 
 # -----------------------------------------
-# FUNÇÃO AUXILIAR PARA CALCULAR ALTURA
+# FUNÇÃO AUXILIAR PARA CALCULAR ALTURA (AJUSTADA)
 # -----------------------------------------
-def calcular_altura_tabela(df):
-    """Calcula a altura ideal em pixels para exibir todas as linhas sem rolagem."""
+# A função agora recebe o número de linhas para calcular a altura exata.
+def calcular_altura_tabela(num_rows):
+    """Calcula a altura ideal em pixels para exibir exatamente o número de linhas, sem rolagem."""
     HEADER_HEIGHT = 35
     ROW_HEIGHT = 35
     MAX_HEIGHT = 800
     
-    # A altura será baseada no ROWS_PER_PAGE para manter o layout fixo
-    altura_fixa = HEADER_HEIGHT + (ROWS_PER_PAGE * ROW_HEIGHT)
+    # Altura é baseada no número real de linhas na página + cabeçalho
+    altura_dinamica = HEADER_HEIGHT + (num_rows * ROW_HEIGHT)
     
-    return min(altura_fixa, MAX_HEIGHT)
+    return min(altura_dinamica, MAX_HEIGHT)
 
 # -----------------------------------------
 # Conectar e Carregar Planilha
@@ -81,7 +82,7 @@ if df is not None and not df.empty:
         st.sidebar.markdown("---")
         if st.sidebar.button("🔄 Recarregar Dados Agora"):
             st.cache_data.clear()
-            st.session_state.current_page = 1 # Reinicia a página após recarregar
+            st.session_state.current_page = 1 
             st.rerun() 
             st.sidebar.success("Dados recarregados!")
 
@@ -114,13 +115,15 @@ if df is not None and not df.empty:
             st.info("Nenhum registro encontrado com os filtros selecionados.")
             
         else:
-            # Exibe a tabela
-            table_height = calcular_altura_tabela(df_paginado)
+            # --- CÁLCULO DA ALTURA DINÂMICA ---
+            # Agora calcula a altura com base no número real de linhas na página (df_paginado)
+            table_height = calcular_altura_tabela(len(df_paginado))
+            
             st.dataframe(
                 df_paginado, 
                 use_container_width=True, 
                 height=table_height,
-                hide_index=True # <--- Esta é a nova linha para ocultar o índice!
+                hide_index=True 
             )
 
             # 6. BOTÕES DE NAVEGAÇÃO
